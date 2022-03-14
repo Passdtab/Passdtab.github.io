@@ -42,7 +42,7 @@
 <p>5.数据回显：</p>
 <p><img src="/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20220314145930120.png" alt="image-20220314145930120"></p>
 <p>　　以上是开启了<code>wp</code>的<code>debug</code>模式测试的，真实环境默认不回显，可使用盲注或通过<code>dnslog/ceye</code>外带数据。</p>
-<p>6.通过审计发现某插件存在注入漏洞，经过调试参数，修改payload结果如下：</p>
+<p>6.通过审计发现某插件存在注入漏洞，经过调试参数，修改<code>payload</code>结果如下：</p>
 <p><img src="/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20220215115431-1-1024x525.png" alt="微信图片_20220215115431-1-1024x525"></p>
 <hr>
 ]]></content>
