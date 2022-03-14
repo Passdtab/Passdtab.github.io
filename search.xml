@@ -7,14 +7,14 @@
 <p>　　　　　　<code>② 插件中存在wp_query调用且参数可控</code></p>
 <p>　　此次漏洞触发点位于 <em>class-wp-tax-query.php</em>文件中的 <em>clean_query</em>函数，通过传入特定参数，根据函数逻辑，可使函数<em>transform_query</em>不经处理直接逃逸返回，从而造成<em>sql</em>注入，以下是漏洞调用链分析：</p>
 <p>　　在<em>clean_query</em>函数中，使*$query[‘field’]<em>的取值为</em>term_taxonomy_id<em>，并且</em>$query[‘include_children’]&#x3D;&#x3D;false<em>或</em>is_taxonomy_hierarchical($query[‘taxonomy’]) &#x3D;&#x3D;false<em>即可跳过下图中的</em>if<em>判断，进入</em>transform_query*函数：    </p>
-<p><img src="/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20220314103958123.png" alt="image-20220314103958123">            </p>
-<p><img src="/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20220314104029802.png" alt="image-20220314104029802"></p>
+<p><img src="/.com//image-20220314112044637-16472280492911.png" alt="image-20220314112044637"></p>
+<p>​    <img src="/.com//image-20220314104029802.png" alt="image-20220314104029802"></p>
 <p>　　在<em>transform_query</em>函数中，由于我们提前传入了参数*$query[‘field’]&#x3D;&#x3D; ‘term_taxonomy_id’*，因此该函数会不经处理直接返回：</p>
-<p><img src="/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20220314104139002.png" alt="image-20220314104139002"></p>
+<p><img src="/.com//image-20220314104139002.png" alt="image-20220314104139002"></p>
 <p>　　由于<em>clean_query</em>函数是由<em>get_sql_for_clause</em>调用的，在<em>transform_query</em>函数逃逸返回后，变量*$query[‘term’]<em>将拼接查询条件作为</em>sql<em>的查询语句，从而引发</em>sql*注入：</p>
-<p><img src="/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20220314104213802.png" alt="image-20220314104213802"></p>
-<p><img src="/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20220314104218537.png" alt="image-20220314104218537"></p>
-<p><img src="/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20220314104227722.png" alt="image-20220314104227722"></p>
+<p><img src="/.com//image-20220314104213802.png" alt="image-20220314104213802"></p>
+<p><img src="/.com//image-20220314104218537.png" alt="image-20220314104218537"></p>
+<p><img src="/.com//image-20220314104227722.png" alt="image-20220314104227722"></p>
 <p>　　此错误是<em>wp</em>核心调用的漏洞，但是<em>wp</em>核心的复用方式（<em>wp</em>自身调用<em>wp_query</em>）的共205处调用均未满足条件，故可在<em>wp</em>的插件&#x2F;主题中寻找符合条件的<em>WP_Query</em>函数来触发漏洞。</p>
 ]]></content>
       <categories>
