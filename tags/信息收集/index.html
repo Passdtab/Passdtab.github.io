@@ -23,26 +23,26 @@
 
   <meta property="og:type" content="website">
 <meta property="og:title" content="Passdtab&#39;s blog">
-<meta property="og:url" content="https://passdtab.github.io/index.html">
+<meta property="og:url" content="https://passdtab.github.io/tags/%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/index.html">
 <meta property="og:site_name" content="Passdtab&#39;s blog">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:author" content="Passdtab">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="https://passdtab.github.io/">
+<link rel="canonical" href="https://passdtab.github.io/tags/%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
+    isHome : false,
     isPost : false,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>Passdtab's blog</title>
+  <title>标签: 信息收集 | Passdtab's blog</title>
   
 
 
@@ -179,223 +179,50 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content tag">
             
-      
+
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://passdtab.github.io/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/a.svg">
-      <meta itemprop="name" content="Passdtab">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Passdtab's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/" class="post-title-link" itemprop="url">RDP远程桌面图像复现</a>
+  
+  <div class="post-block">
+    <div class="posts-collapse">
+      <div class="collection-title">
+        <h2 class="collection-header">信息收集
+          <small>标签</small>
         </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2022-12-26 09:43:24 / 修改时间：11:04:30" itemprop="dateCreated datePublished" datetime="2022-12-26T09:43:24+08:00">2022-12-26</time>
-            </span>
-
-          
-            <span id="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/" class="post-meta-item leancloud_visitors" data-flag-title="RDP远程桌面图像复现" title="阅读次数">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-eye"></i>
-              </span>
-              <span class="post-meta-item-text">阅读次数：</span>
-              <span class="leancloud-visitors-count"></span>
-            </span>
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>1.3k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>1 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
+      </div>
 
       
-          <h2 id="0x01-原理"><a href="#0x01-原理" class="headerlink" title="0x01    原理"></a>0x01    原理</h2><p>　　在使用远程桌面连接服务器时，客户端会将缓存数据保存在当前用户的应用程序数据目录中，这部分数据在会话结束后也不会清除。本文将通过原理分析、数据类型分析，通过手动及自动化的方法对数据拆分合并，再现曾经连过的远程桌面的画面。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
+    <div class="collection-year">
+      <span class="collection-header">2022</span>
     </div>
 
-    
-    
-    
+  <article itemscope itemtype="http://schema.org/Article">
+    <header class="post-header">
 
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
+      <div class="post-meta">
+        <time itemprop="dateCreated"
+              datetime="2022-12-26T09:43:24+08:00"
+              content="2022-12-26">
+          12-26
+        </time>
+      </div>
+
+      <div class="post-title">
+          <a class="post-title-link" href="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/" itemprop="url">
+            <span itemprop="name">RDP远程桌面图像复现</span>
+          </a>
+      </div>
+
+    </header>
   </article>
-  
-  
-  
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://passdtab.github.io/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/a.svg">
-      <meta itemprop="name" content="Passdtab">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Passdtab's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/" class="post-title-link" itemprop="url">wordpress漏洞-cve-2022-21661-原理及复现</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2022-03-14 14:17:12 / 修改时间：23:09:14" itemprop="dateCreated datePublished" datetime="2022-03-14T14:17:12+08:00">2022-03-14</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" itemprop="url" rel="index"><span itemprop="name">漏洞复现</span></a>
-                </span>
-            </span>
-
-          
-            <span id="/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/" class="post-meta-item leancloud_visitors" data-flag-title="wordpress漏洞-cve-2022-21661-原理及复现" title="阅读次数">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-eye"></i>
-              </span>
-              <span class="post-meta-item-text">阅读次数：</span>
-              <span class="leancloud-visitors-count"></span>
-            </span>
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>1.9k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="0x01-原理"><a href="#0x01-原理" class="headerlink" title="0x01  原理"></a>0x01  原理</h2><p>　<code>利用条件：① wordpress &lt;=5.8.2</code></p>
-<p> 　　　　　　<code>② 插件中存在wp_query调用且参数可控。</code></p>
-<p>　　此次漏洞触发点位于 <code>“class-wp-tax-query.php”</code>文件中的 <code>“clean_query”</code>函数，通过传入特定参数，根据函数逻辑，可使函数<code>transform_query</code>不经处理直接逃逸返回，从而造成sql注入，以下是漏洞调用链分析</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/03/14/wordpress%E6%BC%8F%E6%B4%9E-cve-2022-21661-%E5%8E%9F%E7%90%86%E5%8F%8A%E5%A4%8D%E7%8E%B0/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
     </div>
-
-    
-    
-    
-
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
+  </div>
   
   
   
-
 
   
 
