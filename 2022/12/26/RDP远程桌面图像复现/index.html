@@ -21,12 +21,12 @@
     var CONFIG = {"hostname":"passdtab.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="0x01    原理　　在使用远程桌面连接服务器时，客户端会将缓存数据保存在当前用户的应用程序数据目录中，这部分数据在会话结束后也不会清除。本文将通过原理分析、数据类型分析，通过手动及自动化的方法对数据拆分合并，再现曾经连过的远程桌面的画面。">
+  <meta name="description" content="0x01    原理 在使用远程桌面连接服务器时，客户端会将缓存数据保存在当前用户的应用程序数据目录中，这部分数据在会话结束后也不会清除。本文将通过原理分析、数据类型分析，通过手动及自动化的方法对数据拆分合并，再现曾经连过的远程桌面的画面。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="RDP远程桌面图像复现">
 <meta property="og:url" content="https://passdtab.github.io/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/index.html">
 <meta property="og:site_name" content="Passdtab&#39;s blog">
-<meta property="og:description" content="0x01    原理　　在使用远程桌面连接服务器时，客户端会将缓存数据保存在当前用户的应用程序数据目录中，这部分数据在会话结束后也不会清除。本文将通过原理分析、数据类型分析，通过手动及自动化的方法对数据拆分合并，再现曾经连过的远程桌面的画面。">
+<meta property="og:description" content="0x01    原理 在使用远程桌面连接服务器时，客户端会将缓存数据保存在当前用户的应用程序数据目录中，这部分数据在会话结束后也不会清除。本文将通过原理分析、数据类型分析，通过手动及自动化的方法对数据拆分合并，再现曾经连过的远程桌面的画面。">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://passdtab.github.io/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/%E6%8C%81%E4%B9%85%E4%BD%8D%E5%9B%BE%E7%BC%93%E5%AD%98.png">
 <meta property="og:image" content="https://passdtab.github.io/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/winxp%E5%AD%98%E6%94%BE%E4%BD%8D%E7%BD%AE.png">
@@ -284,33 +284,36 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h2 id="0x01-原理"><a href="#0x01-原理" class="headerlink" title="0x01    原理"></a>0x01    原理</h2><p>　　在使用远程桌面连接服务器时，客户端会将缓存数据保存在当前用户的应用程序数据目录中，这部分数据在会话结束后也不会清除。本文将通过原理分析、数据类型分析，通过手动及自动化的方法对数据拆分合并，再现曾经连过的远程桌面的画面。<span id="more"></span></p>
-<h2 id="0x02-手动实现"><a href="#0x02-手动实现" class="headerlink" title="0x02   手动实现"></a>0x02   手动实现</h2><p>　　早期的RDP为了加速连接时的显示，减少数据量的传输，采用了一种技术为<code>BMChache</code>，即位图缓存。<code>BMChache</code>分为两种类型，一种是<code>Bitmap Chaches</code>(位图缓存)，一种是<code>Persisten Bitmap Chaches</code>(持久位图缓存)。区别在于，前一种是临时缓存，与<code>RDP</code>会话生命周期绑定，后一种是持久化的缓存，不受到<code>RDP</code>会话生命周期的限制，即使会话结束后，内容依然会持久化的存在于文件中。</p>
+        <h2 id="0x01-原理">0x01    原理</h2>
+<p>在使用远程桌面连接服务器时，客户端会将缓存数据保存在当前用户的应用程序数据目录中，这部分数据在会话结束后也不会清除。本文将通过原理分析、数据类型分析，通过手动及自动化的方法对数据拆分合并，再现曾经连过的远程桌面的画面。<span id="more"></span></p>
+<h2 id="0x02-手动实现">0x02   手动实现</h2>
+<p>早期的RDP为了加速连接时的显示，减少数据量的传输，采用了一种技术为<code>BMChache</code>，即位图缓存。<code>BMChache</code>分为两种类型，一种是<code>Bitmap Chaches</code>(位图缓存)，一种是<code>Persisten Bitmap Chaches</code>(持久位图缓存)。区别在于，前一种是临时缓存，与<code>RDP</code>会话生命周期绑定，后一种是持久化的缓存，不受到<code>RDP</code>会话生命周期的限制，即使会话结束后，内容依然会持久化的存在于文件中。</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/%E6%8C%81%E4%B9%85%E4%BD%8D%E5%9B%BE%E7%BC%93%E5%AD%98.png" alt="持久位图缓存"></p>
-<p>　　而<code>windows</code>默认是开启持久位图缓存的</p>
-<p>　　在<code>Windows XP</code>中，其持<em>久位图</em>缓存文件存储在 ：</p>
+<p>而<code>windows</code>默认是开启持久位图缓存的</p>
+<p>在<code>Windows XP</code>中，其持<em>久位图</em>缓存文件存储在 ：</p>
 <p><font color="red">%USERPROFILE%\Local Settings\Application Data\Microsoft\Terminal Server Client\Cache \</font>路径中</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/winxp%E5%AD%98%E6%94%BE%E4%BD%8D%E7%BD%AE.png" alt="winxp存放位置"></p>
-<p>　　在Windows 7及更高版本系统中，其文件存储在 ：</p>
+<p>在Windows 7及更高版本系统中，其文件存储在 ：</p>
 <p><font color="red">%USERPROFILE%\AppData\Local\Microsoft\Terminal Server Client\Cache\</font>路径中</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/win7%E5%AD%98%E6%94%BE%E4%BD%8D%E7%BD%AE.png" alt="win7存放位置"></p>
-<p>　　而<code>bmc</code>缓存文件数据格式如下：</p>
+<p>而<code>bmc</code>缓存文件数据格式如下：</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/bmc%E7%BC%93%E5%AD%98%E6%96%87%E4%BB%B6.png" alt="bmc缓存文件"></p>
-<p>　　因此手动复现的原理就很简单了，将<code>.bmc/.bin</code>文件按照数据格式拆分出一个完整的位图文件数据，再按照<code>bmp</code>文件格式重组文件头，最终进行组合形成一个完整的<code>bmp</code>位图文件：</p>
+<p>因此手动复现的原理就很简单了，将<code>.bmc/.bin</code>文件按照数据格式拆分出一个完整的位图文件数据，再按照<code>bmp</code>文件格式重组文件头，最终进行组合形成一个完整的<code>bmp</code>位图文件：</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/bmp%E6%96%87%E4%BB%B6%E9%87%8D%E7%BB%84%E6%B5%81%E7%A8%8B.png" alt="bmp文件重组流程"></p>
-<p>　　以上述文件<code>bcache24.bmc</code>文件为例，其单个位图数据大小为0x1400，即5120，因此从<code>bmc</code>图像数据中复制5120个字节数据到新文件中，按照<code>bmp</code>文件数据格式重组<code>bmp</code>文件头，形成一个完整的<code>bmp</code>图像：</p>
+<p>以上述文件<code>bcache24.bmc</code>文件为例，其单个位图数据大小为0x1400，即5120，因此从<code>bmc</code>图像数据中复制5120个字节数据到新文件中，按照<code>bmp</code>文件数据格式重组<code>bmp</code>文件头，形成一个完整的<code>bmp</code>图像：</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/bmp%E6%96%87%E4%BB%B6%E5%A4%B4.png" alt="bmp文件头"></p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/%E5%AE%8C%E6%95%B4bmp%E6%96%87%E4%BB%B6%E6%95%B0%E6%8D%AE.png" alt="完整bmp文件数据"></p>
-<p>　　最终成功手动提取出了文件中的缓存图像：</p>
+<p>最终成功手动提取出了文件中的缓存图像：</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/%E7%BC%93%E5%AD%98%E6%96%87%E4%BB%B6%E6%8F%90%E5%8F%96.png" alt="缓存文件提取"></p>
-<h2 id="0x03-自动化工具"><a href="#0x03-自动化工具" class="headerlink" title="0x03   自动化工具"></a>0x03   自动化工具</h2><p>　　一个<code>bmc</code>缓存文件能提取出成百上千个图片文件，因此全部手动提取不太现实，好在已经有前人造好了轮子，首先第一个工具为<code>bmc-tools</code>,它是一个专门解析<code>rdp</code>位图缓存的工具，可对<code>bcache*.bmc和cache????.bin</code>文件进行解析，拆分出其中的位图文件，使用效果如下：</p>
+<h2 id="0x03-自动化工具">0x03   自动化工具</h2>
+<p>一个<code>bmc</code>缓存文件能提取出成百上千个图片文件，因此全部手动提取不太现实，好在已经有前人造好了轮子，首先第一个工具为<code>bmc-tools</code>,它是一个专门解析<code>rdp</code>位图缓存的工具，可对<code>bcache*.bmc和cache????.bin</code>文件进行解析，拆分出其中的位图文件，使用效果如下：</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/bmc-tools%E6%8F%90%E5%8F%96.png" alt="bmc-tools提取"></p>
-<p>　　第二个工具为 <code>RdpCacheStitcher</code>，可以使用该图形化工具对原始 <code>RDP</code> 缓存位图进行手动拼接，实现完整的屏幕截图。它提供了一个图形用户拼接的界面和位图存放界面。</p>
+<p>第二个工具为 <code>RdpCacheStitcher</code>，可以使用该图形化工具对原始 <code>RDP</code> 缓存位图进行手动拼接，实现完整的屏幕截图。它提供了一个图形用户拼接的界面和位图存放界面。</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/RdpCacheStitcher.png" alt="RdpCacheStitcher"></p>
-<p>　　可以看出，该工具对提取出的所有缓存图像进行了<code>ai</code>算法的识别组合，但是算法不够精准，有些地方是错乱的，因此还需要手动进行调整。</p>
-<p>　　第三个工具为<code>BMC Viewer</code>，可以直接对<code>bmc</code>文件进行解析查看，工具会进行<code>ai</code>识图并自动进行拼接，虽然是个一键自动化工具，但是效果显而易见，没有第二个好，但是全局可视化上效果还是不错的。</p>
+<p>可以看出，该工具对提取出的所有缓存图像进行了<code>ai</code>算法的识别组合，但是算法不够精准，有些地方是错乱的，因此还需要手动进行调整。</p>
+<p>第三个工具为<code>BMC Viewer</code>，可以直接对<code>bmc</code>文件进行解析查看，工具会进行<code>ai</code>识图并自动进行拼接，虽然是个一键自动化工具，但是效果显而易见，没有第二个好，但是全局可视化上效果还是不错的。</p>
 <p><img src="/2022/12/26/RDP%E8%BF%9C%E7%A8%8B%E6%A1%8C%E9%9D%A2%E5%9B%BE%E5%83%8F%E5%A4%8D%E7%8E%B0/BMC_Viewer.png" alt="BMC_Viewer"></p>
-<p>　　这么看来，最终拼的还是<code>ai</code>算法，只要<code>ai</code>算法够精准，完全有可能实现图片拼接，最终还原成一个完整的图像，但是就目前看来，实战中完全够用，真要是还原完整图像的话那应该就是取证方面需要做到的事情了。</p>
+<p>这么看来，最终拼的还是<code>ai</code>算法，只要<code>ai</code>算法够精准，完全有可能实现图片拼接，最终还原成一个完整的图像，但是就目前看来，实战中完全够用，真要是还原完整图像的话那应该就是取证方面需要做到的事情了。</p>
 
     </div>
 
