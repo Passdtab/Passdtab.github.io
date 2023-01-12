@@ -118,4 +118,115 @@
         <category>逆向</category>
       </categories>
   </entry>
+  <entry>
+    <title>thinkphp5.X全版本rce漏洞原理分析及复现</title>
+    <url>/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/</url>
+    <content><![CDATA[<h2 id="0x01-前言">0x01  前言</h2>
+<p>  最近遇到的好多都是tp的洞，之前遇到的少，对原理、<code>payload</code>也没有深究过，看见tp就上工具，利用不了就下一个，毫不纠缠；但是近期发现有些存在<code>rce</code>的tp，工具也报，但是就是利用不了，网上找了好多<code>payload</code>都无效，遂萌生出了要究其原理的想法，毕竟网上铺天盖地的<code>payload</code>，参数又复杂，总不能瞎猫碰死耗子，本着探索求真的精神😑,在此分析记录。<span id="more"></span></p>
+<h2 id="0x02-环境">0x02  环境</h2>
+<p>  搭建tp环境一般有两种方法，一种是直接在github的tp项目中<code>clone</code>，另一种是用<code>composer</code>安装，安装完<code>composer</code>后使用<code>composer create-project topthink/think=5.0.7 tp5.0.7  --prefer-dist</code> 命令安装对应版本的tp框架，安装完毕后需要进入创建的目录下继续执行<code>composer install</code>来安装核心文件，这里使用该命令安装的理应是<code>5.0.7</code>版本的tp，但是安装的仍然是最新版本，说白了就是版本指定无效，懒得查找原因了，我所用的解决办法就是先利用上述命令安装，然后打开该目录下的<code>composer.json</code>文件，修改<code>&quot;topthink/framework&quot;: &quot;^5.0&quot;</code>为想安装的版本，然后删除同目录下的<code>composer.lock</code>，再执行<code>composer install</code>就会更新指定版本的框架并安装核心文件，这样环境才算搭好。需要注意的一个点是不仅要有tp的框架代码，还要有tp的核心代码，只安装框架代码就会出现如下错误：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230111150634229.png" alt="image-20230111150634229"></p>
+<p>  该报错就是缺少了核心文件，也算是个小坑，记录一下。</p>
+<p>  环境搭好之后，就正式开始<code>rce</code>的原理分析。网上搜索到的关于<code>rce</code>众多的<code>payload</code>，总结的话共有两种利用方式，从而衍生出了两种<code>payload</code>类型：</p>
+<p>  <em><code>①  路由过滤不严谨导致rce。payload呈现如下格式：</code></em></p>
+<p><em><code>/?s=/index/\think\app/invokefunction&amp;function=system&amp;vars[0]=whoami&amp;vars[1][]=-1</code></em></p>
+<p>  <em><code>②  __construct变量覆盖导致rce。payload呈现如下格式：</code></em></p>
+<p><em><code>_method=__construct&amp;filter=system&amp;a=whoami&amp;method=GET</code></em></p>
+<h2 id="0x03-路由过滤不严导致rce">0x03  路由过滤不严导致rce</h2>
+<p>  先分析第一个类型，此<code>payload</code>是利用兼容模式进行访问的（tp支持的url模式有四种），即<code>http://X.X.X.X/index.php?s=/模块/控制器/操作/[参数名/参数值...]</code>，按照上述给出的<code>payload</code>，对应关系即<code>index</code>为模块，<code>/think/app</code>为控制器，<code>invokefunction</code>为操作，<code>vars[0]</code>为参数名，<code>vars\[1][]</code>为参数值，那么<code>function</code>是哪来的？<code>s</code>参数路径中的&quot;\&quot;又具有什么意义？</p>
+<p>  鉴于网上相关原理文章已经讲的很详细了，这里只挑重点的说。在<code>index.php</code>入口代码<code>run()  ---&gt; routeCheck() ---&gt;  path()  ---&gt;  pathinfo()</code>：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230111161229536.png" alt="image-20230111161229536"></p>
+<p>  此方法会根据不同的url访问模式来获取当前URL的<code>pathinfo</code>信息，首先判断的是url中是否存在兼容模式参数，若存在会利用$_GET方法获取，若使用<code>pathinfo</code>模式，则会调用<code>$this-&gt;server(‘PATH_INFO’)</code>去获取，获取后调用<code>ltrim()</code>函数删除$pathinfo左侧的&quot;/&quot;符号,也就是说我们传入的s参数经过处理后变成了<code>index/\think\app/invokefunction</code>，紧接着会赋值给$path并带入check()方法对URL路由进行检测：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230111161548814.png" alt="image-20230111161548814"></p>
+<p>  在该方法中，首先会将s参数中的&quot;/“符号替换为”|&quot;,s参数变为了<code>index|\\think\\app|invokefunction</code>。这里要说一下为什么必须是s参数才行，在tp的默认配置中，<code>var_pathinfo</code>在配置文件中被设置为s，所以我们可以用<code>$_GET[‘s’]</code>来传递路由信息：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112143543411.png" alt="image-20230112143543411"></p>
+<p>  接下来会对路由地址，也就是s参数进行解析分割、验证、格式处理及赋值进而获取到相应的模块、控制器、操作名，在<code>parseUrl()</code>函数中：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230111162158195.png" alt="image-20230111162158195"></p>
+<p>  该方法直接调用了<code>parseUrlPath()</code>函数：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230111162359485.png" alt="image-20230111162359485"></p>
+<p><code>&amp;emsp;&amp;emsp;parseUrlPath()</code>会将修改过的s参数（<code>index|\\think\\app|invokefunction</code>）按照&quot;|&quot;进行分割，从而获取到对应的模块、控制器、操作、参数名、参数值。</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230111162722941.png" alt="image-20230111162722941"></p>
+<p>  这里就解释了为什么s参数中要有&quot;\“符号(兼容模式<code>parseUrlPath()</code>函数没有对”\&quot;符号进行过滤，导致可以指定任意模块、控制器和方法)，s参数整体处理流程如下：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112205201508.png" alt="image-20230112205201508"></p>
+<p>  那不加&quot;\&quot;可以吗？当然不可以，存在即合理，如果不加的话，就会解析成这样：</p>
+<p>模块：<code>index</code>          控制器：<code>think</code>          操作：<code>app</code>          参数：<code>invokefunction</code></p>
+<p>  这样解析肯定会出错，因为不存在think控制器，但如果加了<code>\</code>，<code>\think\app</code>就会当做一个整体去解析，<code>think</code>下的<code>app</code>控制器是存在的：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112100729160.png" alt="image-20230112100729160"></p>
+<p>  随着代码继续执行来到另外一个关键点，<code>module</code>方法：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112205425199.png" alt="image-20230112205425199"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112102330278.png" alt="image-20230112102330278"></p>
+<p>  该方法会获取路由中的模块、控制器、操作。</p>
+<p>  在<code>module</code>方法的最后，会调用<code>invokeMethod()</code>函数再返回：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112102439804.png" alt="image-20230112102439804"></p>
+<p>  在<code>invokeMethod()</code>函数中，首先会调用<code>bindParams()</code>函数，其作用是获取传入的参数并绑定参数：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112103650597.png" alt="image-20230112103650597"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112103523797.png" alt="image-20230112103523797"></p>
+<p>  进行递归绑定的时候，php反射类规定需要<code>function</code>参数来确定所要调用的方法，方法的参数由<code>var</code>确定：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112105426646.png" alt="image-20230112105426646"></p>
+<p>  这也解释了为什么一开始传入的s参数中要有<code>function</code>这个参数，如果将<code>function</code>改为其他名称，就会抛出<code>&quot;method param miss&quot;</code>异常：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112110150678.png" alt="image-20230112110150678"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112105920806.png" alt="image-20230112105920806"></p>
+<p>  参数绑定完毕之后，会写入到<code>$args</code>变量中，最终调用<code>invokeargs</code>函数，该函数会调用指定的反射方法（<code>system</code>）并返回方法的结果，从而完成命令执行。</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112112057718.png" alt="image-20230112112057718"></p>
+<p>  返回的结果保存在<code>$data</code>变量中：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112112500185.png" alt="image-20230112112500185"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112115438614.png" alt="image-20230112115438614"></p>
+<h2 id="0x04-construct-变量覆盖导致rce">0x04  __construct 变量覆盖导致rce</h2>
+<p>  这里还是挑重点的说。在<code>index.php</code>入口代码<code>run()---&gt; routeCheck() ---&gt;  method()</code>：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112142921991.png" alt="image-20230112142921991"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112144248162.png" alt="image-20230112144248162"></p>
+<p>  此函数用于获取当前的请求类型，在该函数中，<code>$method = false</code>直接作为参数传入，会进入到elseif分支，在此分支中可以看到如下代码：<code>$this-&gt;&#123;$this-&gt;method&#125;($_POST)</code>，很明显，只要能控制<code>$this-&gt;method</code>的值就可以执行类中的任意函数，而<code>Config::get('var_method')</code>实际上获取的就是配置文件中<code>var_method</code>的值，为<code>\_method</code>：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112144937959.png" alt="image-20230112144937959"></p>
+<p>  因此，payload中<code>_method=__construct</code>是为了调用<code>thinkphp/library/think/Request.php</code>下的<code>__construct</code>函数，但为什么选了__construct函数？在Requset.app的构造函数中下断，发现构造函数传入了post的参数，代码<code>$this-&gt;$name = $item</code>可以对变量进行赋值，这里就造成了变量覆盖漏洞，payload中的<code>filter=system和method=GET</code>分别将当前类下的<code>$filter</code>赋值成了<code>system</code>，<code>method</code>二次赋值由<code>__construct</code>变成了<code>GET</code>。</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112145426519.png" alt="image-20230112145426519"></p>
+<p>  前面不是已经进行了<code>method</code>的赋值么，为什么又重新赋值？</p>
+<p>  先说在<code>method()</code>函数执行完毕后，会执行<code>$rules = self::$rules[$method]</code>;来获取当前请求类型，而<code>$rules</code>做了如下约定：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112150523217.png" alt="image-20230112150523217"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112150635857.png" alt="image-20230112150635857"></p>
+<p>  也就是说，规则之外的请求类型是不被允许的，如果不进行重新赋值，<code>$rules=__construct</code>， 程序会直接抛出异常：<img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112150909713.png" alt="image-20230112150909713"></p>
+<p>  随着代码执行，又来到关键的一处，就是<code>module</code>方法，在前面第一个payload分析就说到<code>module</code>方法会获取路由中的模块、控制器、操作。最后，会调用<code>invokeMethod()</code>函数再返回，在<code>invokeMethod()</code>中，又有一个冤大头，就是<code>bindParams()</code>函数：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112151809272.png" alt="image-20230112151809272"></p>
+<p>  在<code>bindParams()</code>函数中调用了<code>param()</code>函数：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112152006576.png" alt="image-20230112152006576"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112152035650.png" alt="image-20230112152035650"></p>
+<p>  <code>param()</code>函数中又会调用<code>method()</code>函数获取当前请求类型，然后会根据请求的类型来获取参数并且合并参数，代码中可以看出，参数来源可以是<code>get[]</code>、<code>post</code>、<code>route[]</code>，那么我们传递<code>rce</code>的参数就有很多方式了：</p>
+<p>①  a=whoami</p>
+<p>②  bbbbb=whoami</p>
+<p>③  get[]=whoami</p>
+<p>④  route[]=whoami</p>
+<p>  最后会调用<code>input()</code>函数并返回，<code>input</code>函数是一个过滤函数，会对我们输入的数据进行过滤，函数结尾有一个<code>filterValue()</code>函数，是触发rce的核心点：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112152718903.png" alt="image-20230112152718903"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112153022482.png" alt="image-20230112153022482"></p>
+<p>  <code>call_user_func</code>不用多说了吧，代码执行函数，还记得前面为什么将<code>filter</code>通过变量覆盖变成了<code>system</code>吗？就是为了通过<code>call_user_func</code>来调用它，再加上传入的参数，成功执行<code>system(whoami)</code>，完成整个rce过程。</p>
+<p>  至此，变量覆盖的<code>rce</code>也分析完了。</p>
+<hr>
+<p>  是不是以为结束了，不，还没有😇（看累了吧，我也写累了😭）。</p>
+<p>  变量覆盖的<code>payload</code>到<code>5.0.13</code>之前都是可以成功的，从<code>5.0.13</code>之后，代码有了改动，rce的必经之路module方法<code>（thinkphp/library/think/App.php）</code>中多了这样一行代码：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112155251267.png" alt="image-20230112155251267"></p>
+<p>  直接将我们提前覆盖好的<code>filter</code>变量又覆盖成默认的了，这样，覆盖<code>filter</code>的这条路已经行不通了。</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112160709111.png" alt="image-20230112160709111"></p>
+<p>  tp有没有开启<code>app_debug</code>很重要，如果开启了<code>app_debug</code>，会执行这几行代码：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112155917746.png" alt="image-20230112155917746"></p>
+<p>  如果已经看懂了前面的原理，一眼就能看出，开启了<code>app_debug</code>又会执行<code>param()</code>函数，而<code>param()</code>函数又会走前面分析的老路，<code>param()  ---&gt;  input()  ---&gt;  filterValue  ---&gt;  call_user_func()</code>，最终仍然可以rce：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112161536866.png" alt="image-20230112161536866"></p>
+<p>  这里就出现了一个小细节，在<code>5.0.13</code>之前执行payload有时候返回一条结果，有时候返回两条，究其原理就是在利用变量覆盖漏洞rce的时候，由于<code>app_debug</code>和正常代码逻辑都会调用<code>param()</code>函数，因此若开启了<code>app_debug</code>，会执行两次命令，返回两条结果，未开启则返回一条：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112162850991.png" alt="image-20230112162850991"></p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112162854740.png" alt="image-20230112162854740"></p>
+<p>  最后再提一下另一种payload方法：<code>/?s=captcha</code>，这种是利用验证码类库进行攻击的，<code>captcha</code>的路由在<code>vendor/topthink/think-captcha/src/helper.php</code>进行了定义：</p>
+<p><code>\think\Route::get('captcha/[:id]', &quot;\\think\\captcha\\CaptchaController@index&quot;);</code></p>
+<p>  而<code>captcha</code>路由对应的dispatch类型为<code>method</code>，即代码流程不会执行module这条分支，转而会执行<code>method</code>所在的分支，完美的避开了在<code>5.0.13</code>中module()函数<code>filter</code>变量被二次覆盖导致攻击链中断的问题，也就是说，<code>5.0.13</code>之后的版本若没有开启<code>app_debug</code>，还可以利用第三方类库如<code>captcha</code>进行攻击（疲于安装，就不演示了😅）：</p>
+<p><img src="/2023/01/11/thinkphp5.X%E5%85%A8%E7%89%88%E6%9C%ACrce%E6%BC%8F%E6%B4%9E%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90%E5%8F%8A%E5%A4%8D%E7%8E%B0/image-20230112164202753.png" alt="image-20230112164202753"></p>
+<h2 id="0x05-总结">0x05  总结</h2>
+<p>  其实前面提到的<code>payload</code>也仅仅只是一种，明白了原理，只要类里面存在<code>call_user_func()</code>都可以想办法构造payload进行攻击，又由于接收参数的多样、参数名的多样、还可以利用文件包含、文件读写函数写shell等因素，造就了铺天盖地的payload。变量覆盖漏洞在<code>5.1.X</code>的低版本也可以利用，只不过需要开启<code>app_debug</code>或者利用第三方库才能成功。 测试下来，<code>5.1.5</code>之后的版本就失效了（<code>5.1.X</code>仅测试了开启<code>app_debug</code>的结果，未测试第三方类库的利用），而<code>5.0.X</code>版本的利用从<code>5.0.24</code>开始彻底被修复。</p>
+<p>  最终总结如下：</p>
+<p>  <em><code>① 5.0.0-5.0.12——可无条件rce， construct变量覆盖和控制路由参数这两种方法均可。</code></em></p>
+<p>  <em><code>② 5.0.13-5.0.23——可使用construct变量覆盖的payload（参数限定为get[]或route[]），但需开启app_debug或使用第三方类库。</code></em></p>
+<p>  <em><code>③ 5.1.1-5.1.5——可使用construct变量覆盖的payload（参数限定为get[]或route[]），但需开启app_debug或使用第三方类库。</code></em></p>
+<hr>
+<p>                    💐  完结撒花！💐</p>
+]]></content>
+      <categories>
+        <category>漏洞复现</category>
+      </categories>
+  </entry>
 </search>
